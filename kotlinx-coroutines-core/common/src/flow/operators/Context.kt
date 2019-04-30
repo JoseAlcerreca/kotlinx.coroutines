@@ -50,7 +50,7 @@ public fun <T> Flow<T>.flowOn(flowContext: CoroutineContext, bufferSize: Int = 1
         coroutineScope {
             val channel = produce(flowContext, capacity = bufferSize) {
                 collect { value ->
-                    send(value)
+                    return@collect send(value)
                 }
             }
 
@@ -107,7 +107,7 @@ public fun <T, R> Flow<T>.flowWith(
         val originalContext = coroutineContext.minusKey(Job)
         val prepared = source.flowOn(originalContext, bufferSize)
         builder(prepared).flowOn(flowContext, bufferSize).collect { value ->
-            emit(value)
+            return@collect emit(value)
         }
     }
 }
