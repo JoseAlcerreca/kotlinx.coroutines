@@ -43,14 +43,18 @@ class PublicApiTest(
     @Test
     fun testApi() {
         val libsDir = File("../$rootDir/$moduleName/build/libs").absoluteFile.normalize()
-        val jarFile = getJarPath(libsDir)
+        val jarPath = getJarPath(libsDir)
         val kotlinJvmMappingsFiles = listOf(libsDir.resolve("../visibilities.json"))
         val visibilities =
                 kotlinJvmMappingsFiles
                         .map { readKotlinVisibilities(it) }
                         .reduce { m1, m2 -> m1 + m2 }
-        val api = getBinaryAPI(JarFile(jarFile), visibilities).filterOutNonPublic(nonPublicPackages)
-        api.dumpAndCompareWith(File("reference-public-api").resolve("$moduleName.txt"))
+        JarFile(jarPath).use { jarFile ->
+            val api = getBinaryAPI(jarFile, visibilities).filterOutNonPublic(nonPublicPackages)
+            api.dumpAndCompareWith(File("reference-public-api").resolve("$moduleName.txt"))
+            // check for atomicfu leaks
+            jarFile.checkForAtomicFu()
+        }
     }
 
     private fun getJarPath(libsDir: File): File {
@@ -67,4 +71,27 @@ class PublicApiTest(
         return files.singleOrNull() ?:
             error("No single file matching $regex in $libsDir:\n${files.joinToString("\n")}")
     }
+}
+
+private val ATOMIC_FU_REF = "Lkotlinx/atomicfu/".toByteArray()
+
+private fun JarFile.checkForAtomicFu() {
+    var found = false
+    for (e in entries()) {
+        if (e.name.endsWith(".class")) {
+            getInputStream(e).use {
+                val bytes = it.readBytes()
+                loop@for (i in 0 until bytes.size - ATOMIC_FU_REF.size) {
+                    for (j in 0 until ATOMIC_FU_REF.size) {
+                        if (bytes[i + j] != ATOMIC_FU_REF[j]) continue@loop
+                    }
+                    // found!
+                    println("Found atomicfu reference in ${e.name}")
+                    found = true
+                    break@loop
+                }
+            }
+        }
+    }
+    if (found) error("Found references to atomicfu in $name")
 }
