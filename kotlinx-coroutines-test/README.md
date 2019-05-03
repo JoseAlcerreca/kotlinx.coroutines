@@ -318,7 +318,7 @@ tests.
 The main difference between `TestCoroutineScope` and `TestCoroutineDispatcher` is how uncaught exceptions are handled. 
 When using `TestCoroutineDispatcher` uncaught exceptions thrown in coroutines will use regular 
 [coroutine exception handling](https://kotlinlang.org/docs/reference/coroutines/exception-handling.html). 
-`TestCoroutineScope` will always use `TestCoroutineDispatcher` as it's dispatcher.
+`TestCoroutineScope` will always use `TestCoroutineDispatcher` as its dispatcher.
 
 A test can use a `TestCoroutineDispatcher` without declaring an explicit `TestCoroutineScope`. This is preferred 
 when the class under test allows a test to provide a [CoroutineDispatcher] but does not allow the test to provide a 
